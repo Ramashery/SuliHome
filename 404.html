@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Suli Home - Page Not Found</title>
+  <script>
+    // Имя вашего репозитория на GitHub
+    const repoName = 'SuliHome';
+
+    // Получаем полный путь, на который пытался зайти пользователь.
+    // Например: /SuliHome/product/ceramic-pot
+    const path = window.location.pathname;
+
+    // Формируем "чистый" путь для нашего SPA-роутера, убирая имя репозитория.
+    // Результат будет: /product/ceramic-pot
+    // Это нужно, чтобы внутренний роутер в index.html правильно понял URL.
+    const spaPath = path.startsWith(`/${repoName}`)
+      ? path.substring(`/${repoName}`.length)
+      : path;
+
+    // Сохраняем этот "чистый" путь в sessionStorage, чтобы index.html мог его прочитать.
+    sessionStorage.setItem('gh-pages-spa-redirect', spaPath);
+
+    // Перенаправляем пользователя на главную страницу нашего сайта (в корень репозитория).
+    // Браузер загрузит /SuliHome/index.html
+    window.location.replace(`/${repoName}/`);
+  </script>
+</head>
+<body>
+  <!-- Эта ссылка нужна на случай, если скрипт по какой-то причине не сработает -->
+  <p>If you are not redirected automatically, please <a href="/SuliHome/">click here to go to the homepage</a>.</p>
+</body>
+</html>
