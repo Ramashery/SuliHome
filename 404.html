@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Suli Home - Page Not Found</title>
+  <script>
+    // Получаем путь, на который пытался зайти пользователь
+    const path = window.location.pathname;
+
+    // Сохраняем этот путь в sessionStorage. 
+    // Мы используем sessionStorage, чтобы он не сохранялся между сессиями браузера.
+    sessionStorage.setItem('gh-pages-spa-redirect', path);
+
+    // Перенаправляем пользователя в корень сайта, где находится наше SPA.
+    // window.location.replace() не добавляет новую запись в историю браузера,
+    // что делает перенаправление "бесшовным".
+    window.location.replace('/');
+  </script>
+</head>
+<body>
+  <p>If you are not redirected automatically, follow this <a href="/">link to the homepage</a>.</p>
+</body>
+</html>
