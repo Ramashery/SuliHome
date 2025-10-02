@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suli Admin - Панель управления</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* [!] СКОПИРУЙТЕ СЮДА ВСЕ СТИЛИ ИЗ ВАШЕГО ПРИМЕРА АДМИН-ПАНЕЛИ */
+        :root { /* ... */ }
+        body { /* ... */ }
+        /* ... все стили админки ... */
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo"><i class="fas fa-store"></i> Suli Admin</div>
+        </div>
+        
+        <nav class="nav-menu">
+            <a href="#dashboard" class="nav-item active" data-page="dashboard">
+                <i class="fas fa-chart-line"></i><span>Дашборд</span>
+            </a>
+            <a href="#products" class="nav-item" data-page="products">
+                <i class="fas fa-box"></i><span>Товары</span>
+            </a>
+            <a href="#categories" class="nav-item" data-page="categories">
+                <i class="fas fa-tags"></i><span>Категории</span>
+            </a>
+            <a href="#orders" class="nav-item" data-page="orders">
+                <i class="fas fa-shopping-bag"></i><span>Заказы</span>
+                <span class="nav-badge" id="new-orders-badge">0</span>
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar" id="user-avatar">?</div>
+                <div class="user-details">
+                    <div class="user-name" id="user-email">Загрузка...</div>
+                    <div class="user-role">Администратор</div>
+                </div>
+                <i id="logout-btn" class="fas fa-sign-out-alt" style="cursor: pointer; color: var(--text-light);"></i>
+            </div>
+        </div>
+    </aside>
+    
+    <main class="main-content">
+        <div class="top-bar">
+            <h1 class="page-title" id="page-title">Дашборд</h1>
+            <div class="top-actions">
+                <button class="btn btn-primary" id="add-new-btn"><i class="fas fa-plus"></i> Добавить</button>
+            </div>
+        </div>
+        
+        <div id="content-area">
+            <!-- Контент админки будет рендериться сюда с помощью admin.js -->
+        </div>
+    </main>
+    
+    <div class="modal-overlay" id="form-modal">
+        <!-- Модальное окно для форм будет рендериться сюда -->
+    </div>
+
+    <!-- Подключаем скрипты -->
+    <script src="app.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>
