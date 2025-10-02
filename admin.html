@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suli Admin - Панель управления</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #7F6B5F; --primary-light: #D1C4B9; --accent: #C89B7B; --accent-dark: #8B7866; --text: #3E352E; --text-light: #8E7E71; --background: #F9F6F3; --card-bg: #FFFFFF; --success: #7DBE8C; --error: #E18B8B; --warning: #FFB84D; --info: #5DADE2; --border: rgba(127, 107, 95, 0.15); --shadow: 0 2px 8px rgba(0,0,0,0.08); --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: var(--background); color: var(--text); display: flex; min-height: 100vh; font-size: 15px; }
+        
+        #login-screen { width: 100%; height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .login-card { background: var(--card-bg); padding: 40px; border-radius: 20px; box-shadow: var(--shadow-lg); width: 100%; max-width: 400px; text-align: center; }
+        .login-card h1 { font-family: 'Cormorant Garamond', serif; color: var(--primary); margin-bottom: 10px; }
+        .login-card p { color: var(--text-light); margin-bottom: 30px; }
+        .login-form .form-group { text-align: left; margin-bottom: 20px; }
+        
+        #admin-app { display: none; width: 100%; }
+        .sidebar { width: 260px; background: var(--card-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; height: 100vh; z-index: 100; box-shadow: var(--shadow); }
+        .sidebar-header { padding: 24px 20px; border-bottom: 1px solid var(--border); }
+        .logo { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        .logo i { font-size: 28px; color: var(--accent); }
+        .nav-menu { flex: 1; padding: 20px 12px; overflow-y: auto; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-bottom: 4px; border-radius: 12px; color: var(--text-light); text-decoration: none; transition: all 0.2s; cursor: pointer; font-weight: 500; }
+        .nav-item:hover { background: var(--background); color: var(--primary); }
+        .nav-item.active { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white; box-shadow: var(--shadow); }
+        .nav-item i { width: 20px; text-align: center; font-size: 18px; }
+        .sidebar-footer { padding: 16px; border-top: 1px solid var(--border); }
+        .user-info { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--background); border-radius: 12px; }
+        .user-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; }
+        .user-details { flex: 1; overflow: hidden; }
+        .user-name { font-size: 14px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+        .user-role { font-size: 12px; color: var(--text-light); }
+        #logout-btn { cursor: pointer; color: var(--text-light); font-size: 18px; transition: color 0.2s; }
+        #logout-btn:hover { color: var(--error); }
+        .main-content { flex: 1; margin-left: 260px; padding: 24px; }
+        .top-bar { background: var(--card-bg); padding: 16px 24px; border-radius: 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow); }
+        .page-title { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 700; color: var(--primary); }
+        .top-actions { display: flex; gap: 12px; }
+        .btn { padding: 10px 20px; border-radius: 10px; border: none; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-size: 14px; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-dark)); color: white; box-shadow: var(--shadow); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+        .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--text); }
+        .btn-outline:hover { background: var(--background); }
+        .btn-danger { background: var(--error); color: white; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 24px; }
+        .stat-card { background: var(--card-bg); padding: 24px; border-radius: 16px; box-shadow: var(--shadow); position: relative; overflow: hidden; transition: transform 0.2s; }
+        .stat-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+        .stat-card::before { content: ''; position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: currentColor; opacity: 0.05; border-radius: 50%; }
+        .stat-card.products { color: var(--accent); } .stat-card.categories { color: var(--success); } .stat-card.stock { color: var(--info); } .stat-card.archived { color: var(--warning); }
+        .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; background-color: var(--background); }
+        .stat-value { font-size: 32px; font-weight: 700; color: var(--text); margin-bottom: 4px; margin-top: 16px;}
+        .stat-label { font-size: 14px; color: var(--text-light); }
+        .data-section { background: var(--card-bg); border-radius: 16px; padding: 24px; box-shadow: var(--shadow); margin-bottom: 24px; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;}
+        .section-title { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 600; color: var(--primary); }
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table thead { background: var(--background); }
+        .data-table th { padding: 14px 16px; text-align: left; font-weight: 600; color: var(--text); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .data-table td { padding: 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .data-table tbody tr:hover { background: var(--background); }
+        .product-cell { display: flex; align-items: center; gap: 12px; }
+        .product-thumb { width: 50px; height: 50px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #eee;}
+        .product-name { font-weight: 600; margin-bottom: 4px; }
+        .product-category { font-size: 12px; color: var(--text-light); }
+        .status-badge { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-block; }
+        .status-badge.active { background: rgba(125, 190, 140, 0.2); color: var(--success); }
+        .status-badge.archived { background: rgba(255, 184, 77, 0.2); color: var(--warning); }
+        .action-buttons { display: flex; gap: 8px; }
+        .action-btn { width: 32px; height: 32px; border-radius: 8px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; background: var(--background); color: var(--text-light); }
+        .action-btn:hover { transform: scale(1.1); }
+        .action-btn.edit:hover { background: var(--info); color: white; }
+        .action-btn.delete:hover { background: var(--error); color: white; }
+        .form-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+        .form-column { display: flex; flex-direction: column; gap: 20px; }
+        .form-section { background: var(--card-bg); border-radius: 16px; padding: 24px; box-shadow: var(--shadow); }
+        .form-section h4 { font-family: 'Cormorant Garamond', serif; color: var(--primary); margin-bottom: 16px; font-size: 18px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group:last-child { margin-bottom: 0; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: var(--text); font-size: 14px; }
+        .form-control { width: 100%; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; transition: all 0.2s; background: var(--background); }
+        .form-control:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(200, 155, 123, 0.15); }
+        textarea.form-control { min-height: 100px; resize: vertical; }
+        .slug-preview { font-size: 12px; color: var(--text-light); background: #f1edea; padding: 4px 8px; border-radius: 6px; margin-top: 6px; word-break: break-all; }
+        .slug-preview strong { color: var(--accent-dark); }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; opacity: 0; transition: opacity 0.2s; }
+        .modal-overlay.active { display: flex; opacity: 1; }
+        .modal { background: var(--card-bg); border-radius: 20px; padding: 32px; max-width: 500px; width: 90%; text-align: center;}
+        .modal-title { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 700; color: var(--primary); margin-bottom: 12px;}
+        .modal p { color: var(--text-light); margin-bottom: 24px; }
+        .modal-actions { display: flex; gap: 12px; justify-content: center; }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 2000; }
+        .toast { background: var(--card-bg); margin-bottom: 10px; padding: 16px 20px; border-radius: 12px; box-shadow: var(--shadow-lg); display: flex; align-items: center; gap: 12px; transform: translateX(120%); opacity: 0; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+        .toast.show { transform: translateX(0); opacity: 1;}
+        .toast.success { border-left: 4px solid var(--success); } .toast.error { border-left: 4px solid var(--error); }
+        .toast i { font-size: 20px; } .toast.success i { color: var(--success); } .toast.error i { color: var(--error); }
+        @media (max-width: 992px) { .form-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { .sidebar { transform: translateX(-100%); transition: transform 0.3s; position: fixed; z-index: 1000; } .sidebar.active { transform: translateX(0); } .main-content { margin-left: 0; } .mobile-menu-btn { position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px; border-radius: 50%; background: var(--accent); color: white; border: none; box-shadow: var(--shadow-lg); z-index: 999; display: flex; align-items: center; justify-content: center; font-size: 24px; } .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 990; display: none; } .sidebar.active + .sidebar-overlay { display: block; } }
+    </style>
+</head>
+<body>
+    <div id="login-screen">
+        <div class="login-card">
+            <div class="logo" style="justify-content: center; margin-bottom: 20px;"><i class="fas fa-store"></i> Suli Admin</div>
+            <h1>Вход в панель</h1>
+            <p>Пожалуйста, введите ваши данные для входа.</p>
+            <form id="login-form" class="login-form">
+                <div class="form-group">
+                    <label for="email">Логин</label> <input type="text" id="email" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Пароль</label> <input type="password" id="password" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Войти</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="admin-app">
+        <aside class="sidebar">
+            <div class="sidebar-header"><div class="logo"><i class="fas fa-store"></i> Suli Admin</div></div>
+            <nav class="nav-menu">
+                <a href="#dashboard" class="nav-item active" data-page="dashboard"><i class="fas fa-chart-line"></i><span>Дашборд</span></a>
+                <a href="#products" class="nav-item" data-page="products"><i class="fas fa-box"></i><span>Товары</span></a>
+                <a href="#categories" class="nav-item" data-page="categories"><i class="fas fa-tags"></i><span>Категории</span></a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" id="user-avatar">AD</div>
+                    <div class="user-details">
+                        <div class="user-name" id="user-name">Admin</div><div class="user-role">Администратор</div>
+                    </div>
+                    <i id="logout-btn" class="fas fa-sign-out-alt"></i>
+                </div>
+            </div>
+        </aside>
+        <div class="sidebar-overlay"></div>
+        <main class="main-content">
+            <div class="top-bar">
+                <h1 class="page-title" id="page-title">Дашборд</h1>
+                <div class="top-actions">
+                    <button class="btn btn-primary" id="add-new-btn"><i class="fas fa-plus"></i> Добавить</button>
+                </div>
+            </div>
+            <div id="content-area"></div>
+        </main>
+    </div>
+
+    <div class="modal-overlay" id="confirmation-modal">
+        <div class="modal">
+            <h2 class="modal-title" id="modal-title">Подтверждение</h2>
+            <p id="modal-message">Вы уверены?</p>
+            <div class="modal-actions">
+                <button class="btn btn-outline" id="modal-cancel">Отмена</button>
+                <button class="btn btn-danger" id="modal-confirm">Удалить</button>
+            </div>
+        </div>
+    </div>
+    <div id="toast-container"></div>
+    <button class="mobile-menu-btn"><i class="fas fa-bars"></i></button>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCXl1pRh-k1pvC0BiyeENGBjY342Vxx99M",
+            authDomain: "suli-home.firebaseapp.com",
+            projectId: "suli-home",
+            storageBucket: "suli-home.appspot.com",
+            messagingSenderId: "799949754331",
+            appId: "1:799949754331:web:8e9dfbff946a5ed62661fe"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        const AdminApp = {
+            store: { products: [], categories: [] },
+
+            handleAuthState() {
+                auth.onAuthStateChanged(async user => {
+                    const loginScreen = document.getElementById('login-screen');
+                    const adminApp = document.getElementById('admin-app');
+                    
+                    if (user) {
+                        loginScreen.style.display = 'none';
+                        adminApp.style.display = 'flex';
+                        const userNameEl = document.getElementById('user-name');
+                        const userAvatarEl = document.getElementById('user-avatar');
+                        userNameEl.textContent = user.email;
+                        userAvatarEl.textContent = user.email.substring(0, 2).toUpperCase();
+                        await this.initApp();
+                    } else {
+                        loginScreen.style.display = 'flex';
+                        adminApp.style.display = 'none';
+                    }
+                });
+            },
+
+            async initApp() {
+                await this.fetchData();
+                this.router.init();
+                this.bindAppEventListeners();
+            },
+
+            async fetchData() {
+                try {
+                    const [productsSnap, categoriesSnap] = await Promise.all([
+                        db.collection('products').get(),
+                        db.collection('categories').orderBy('order').get() // Added sorting
+                    ]);
+                    this.store.products = productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    this.store.categories = categoriesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                } catch (error) { this.showToast('Ошибка загрузки данных', 'error'); }
+            },
+            
+            bindAuthEventListeners() {
+                document.getElementById('login-form').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const email = e.target.email.value;
+                    const password = e.target.password.value;
+                    const loginButton = e.target.querySelector('button');
+                    loginButton.disabled = true;
+                    loginButton.textContent = "Вход...";
+
+                    if (email === '1' && password === '1') {
+                        const loginScreen = document.getElementById('login-screen');
+                        const adminApp = document.getElementById('admin-app');
+                        loginScreen.style.display = 'none';
+                        adminApp.style.display = 'flex';
+                        document.getElementById('user-name').textContent = 'dev@local';
+                        document.getElementById('user-avatar').textContent = 'DL';
+                        await this.initApp();
+                        loginButton.disabled = false;
+                        loginButton.textContent = "Войти";
+                        return;
+                    }
+                    try { await auth.signInWithEmailAndPassword(email, password); } 
+                    catch (error) { this.showToast(`Ошибка входа: ${error.message}`, 'error'); } 
+                    finally { loginButton.disabled = false; loginButton.textContent = "Войти"; }
+                });
+
+                document.getElementById('logout-btn').addEventListener('click', () => {
+                    if (document.getElementById('user-name').textContent === 'dev@local') { window.location.reload(); } 
+                    else { auth.signOut(); }
+                });
+            },
+
+            bindAppEventListeners() {
+                document.querySelector('.nav-menu').addEventListener('click', e => {
+                    const navItem = e.target.closest('.nav-item');
+                    if(navItem) { document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active')); navItem.classList.add('active'); }
+                });
+                
+                document.getElementById('add-new-btn').addEventListener('click', () => {
+                   const currentPage = location.hash.replace('#', '').split('/')[0] || 'dashboard';
+                   if (currentPage === 'products') this.router.navigate('#products/new');
+                   if (currentPage === 'categories') this.router.navigate('#categories/new');
+                });
+
+                document.getElementById('content-area').addEventListener('click', async e => {
+                    const editBtn = e.target.closest('.edit-btn');
+                    if(editBtn) { this.router.navigate(`#${editBtn.dataset.type}/edit/${editBtn.dataset.id}`); return; }
+                    const deleteBtn = e.target.closest('.delete-btn');
+                    if (deleteBtn) {
+                        const {type, id, name} = deleteBtn.dataset;
+                        const confirmed = await this.showConfirmation(`Вы уверены, что хотите удалить "${name}"?`);
+                        if(confirmed) {
+                           try { await db.collection(type).doc(id).delete(); this.showToast('Успешно удалено'); await this.fetchData(); this.router.handleRouteChange(); } 
+                           catch(err) { this.showToast('Ошибка удаления', 'error'); }
+                        }
+                    }
+                });
+
+                const sidebar = document.querySelector('.sidebar');
+                const overlay = document.querySelector('.sidebar-overlay');
+                document.querySelector('.mobile-menu-btn').addEventListener('click', () => sidebar.classList.toggle('active'));
+                overlay.addEventListener('click', () => sidebar.classList.remove('active'));
+            },
+
+            render(html) { document.getElementById('content-area').innerHTML = html; },
+            
+            templates: {
+                dashboard() {
+                    const stats = { products: AdminApp.store.products.length, categories: AdminApp.store.categories.length, totalStock: AdminApp.store.products.reduce((acc, p) => acc + (p.stock || 0), 0), archived: AdminApp.store.products.filter(p => p.archived).length };
+                    return `<div class="stats-grid"><div class="stat-card products"><div class="stat-icon"><i class="fas fa-box"></i></div><div class="stat-value">${stats.products}</div><div class="stat-label">Всего товаров</div></div><div class="stat-card categories"><div class="stat-icon"><i class="fas fa-tags"></i></div><div class="stat-value">${stats.categories}</div><div class="stat-label">Категорий</div></div><div class="stat-card stock"><div class="stat-icon"><i class="fas fa-warehouse"></i></div><div class="stat-value">${stats.totalStock}</div><div class="stat-label">Единиц на складе</div></div><div class="stat-card archived"><div class="stat-icon"><i class="fas fa-archive"></i></div><div class="stat-value">${stats.archived}</div><div class="stat-label">В архиве</div></div></div>`;
+                },
+                productsPage() {
+                    const products = AdminApp.store.products;
+                    return `<div class="data-section"><table class="data-table"><thead><tr><th>Товар</th><th>Цена</th><th>Склад</th><th>Статус</th><th>Действия</th></tr></thead><tbody>${products.map(p => { const category = AdminApp.store.categories.find(c => c.id == p.categoryId); return `<tr><td><div class="product-cell"><img src="${p.images?.[0] || ''}" class="product-thumb"><div><div class="product-name">${p.name_ru || p.name}</div><div class="product-category">${category?.name_ru || category?.name || 'N/A'}</div></div></div></td><td><strong>${p.price} ₾</strong></td><td>${p.stock} шт.</td><td><span class="status-badge ${p.archived ? 'archived' : 'active'}">${p.archived ? 'Архив' : 'Активен'}</span></td><td><div class="action-buttons"><button class="action-btn edit edit-btn" data-type="products" data-id="${p.id}"><i class="fas fa-edit"></i></button><button class="action-btn delete delete-btn" data-type="products" data-id="${p.id}" data-name="${p.name_ru || p.name}"><i class="fas fa-trash"></i></button></div></td></tr>`}).join('')}</tbody></table></div>`;
+                },
+                categoriesPage() {
+                    const categories = AdminApp.store.categories.sort((a, b) => (a.order || 0) - (b.order || 0));
+                    const mainCategories = categories.filter(c => !c.parentId);
+                    
+                    let html = '<div class="data-section"><table class="data-table"><thead><tr><th>Название</th><th>Товаров</th><th>Статус</th><th>Действия</th></tr></thead><tbody>';
+                    
+                    mainCategories.forEach(mainCat => {
+                        const productCount = AdminApp.store.products.filter(p => p.categoryId == mainCat.id).length;
+                        html += `
+                        <tr style="background: var(--background); font-weight: 600;">
+                            <td><strong style="font-size: 15px;">📂 ${mainCat.name_ru || mainCat.name}</strong></td>
+                            <td>${productCount}</td>
+                            <td><span class="status-badge ${mainCat.archived ? 'archived' : 'active'}">${mainCat.archived ? 'Архив' : 'Активен'}</span></td>
+                            <td><div class="action-buttons">
+                                <button class="action-btn edit edit-btn" data-type="categories" data-id="${mainCat.id}"><i class="fas fa-edit"></i></button>
+                                <button class="action-btn delete delete-btn" data-type="categories" data-id="${mainCat.id}" data-name="${mainCat.name_ru || mainCat.name}"><i class="fas fa-trash"></i></button>
+                            </div></td>
+                        </tr>`;
+                        
+                        const subCategories = categories.filter(c => c.parentId == mainCat.id);
+                        subCategories.forEach(subCat => {
+                            const subProductCount = AdminApp.store.products.filter(p => p.categoryId == subCat.id).length;
+                            html += `
+                            <tr style="background: rgba(200, 155, 123, 0.03);">
+                                <td style="padding-left: 40px;">
+                                    <span style="color: var(--text-light);">└─</span> ${subCat.name_ru || subCat.name}
+                                </td>
+                                <td>${subProductCount}</td>
+                                <td><span class="status-badge ${subCat.archived ? 'archived' : 'active'}">${subCat.archived ? 'Архив' : 'Активен'}</span></td>
+                                <td><div class="action-buttons">
+                                    <button class="action-btn edit edit-btn" data-type="categories" data-id="${subCat.id}"><i class="fas fa-edit"></i></button>
+                                    <button class="action-btn delete delete-btn" data-type="categories" data-id="${subCat.id}" data-name="${subCat.name_ru || subCat.name}"><i class="fas fa-trash"></i></button>
+                                </div></td>
+                            </tr>`;
+                        });
+                    });
+                    
+                    html += '</tbody></table></div>';
+                    return html;
+                },
+                
+                categoryForm(category = {}) {
+                   const isNew = !category.id;
+                   const mainCategories = AdminApp.store.categories.filter(c => !c.parentId && c.id !== category.id);
+                   
+                   return `
+                   <form id="category-form" data-id="${category.id || ''}">
+                       <div class="form-grid">
+                           <div class="form-column">
+                                <div class="form-section">
+                                    <h4>Основная информация</h4>
+                                    <div class="form-group">
+                                        <label>Родительская категория</label>
+                                        <select class="form-control" name="parentId">
+                                            <option value="">-- Главная категория --</option>
+                                            ${mainCategories.map(c => `<option value="${c.id}" ${category.parentId == c.id ? 'selected' : ''}>${c.name_ru || c.name}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <div class="form-group"><label><input type="checkbox" name="archived" ${category.archived ? 'checked' : ''}> Архивирована</label></div>
+                                </div>
+                                
+                                <div class="form-section">
+                                    <h4>Контент (EN)</h4>
+                                    <div class="form-group"><label for="name">Название *</label><input type="text" class="form-control" name="name" value="${category.name || ''}" required></div>
+                                    <div class="form-group"><label for="slug_en">URL Slug *</label><input type="text" class="form-control" name="slug_en" value="${category.slugs?.en || ''}" required><div class="slug-preview">URL: /en/<strong>${category.slugs?.en || ''}</strong></div></div>
+                                </div>
+                                
+                                <div class="form-section">
+                                    <h4>Контент (RU)</h4>
+                                    <div class="form-group"><label for="name_ru">Название</label><input type="text" class="form-control" name="name_ru" value="${category.name_ru || ''}"></div>
+                                    <div class="form-group"><label for="slug_ru">URL Slug</label><input type="text" class="form-control" name="slug_ru" value="${category.slugs?.ru || ''}"><div class="slug-preview">URL: /ru/<strong>${category.slugs?.ru || ''}</strong></div></div>
+                                </div>
+                                
+                                <div class="form-section">
+                                    <h4>Контент (KA)</h4>
+                                    <div class="form-group"><label for="name_ka">Название</label><input type="text" class="form-control" name="name_ka" value="${category.name_ka || ''}"></div>
+                                    <div class="form-group"><label for="slug_ka">URL Slug</label><input type="text" class="form-control" name="slug_ka" value="${category.slugs?.ka || ''}"><div class="slug-preview">URL: /ka/<strong>${category.slugs?.ka || ''}</strong></div></div>
+                                </div>
+                           </div>
+                           
+                           <div class="form-column">
+                               <div class="form-section">
+                                    <h4>Изображение</h4>
+                                    <div class="form-group"><label>URL изображения</label><input type="url" class="form-control" name="image" value="${category.image || ''}"></div>
+                                    ${category.image ? `<img src="${category.image}" style="width: 100%; border-radius: 12px; margin-top: 12px;">` : ''}
+                               </div>
+                               
+                               <div class="form-section">
+                                    <h4>Порядок отображения</h4>
+                                    <div class="form-group"><label>Номер порядка</label><input type="number" class="form-control" name="order" value="${category.order || 1}" min="1"></div>
+                                    <p style="font-size: 13px; color: var(--text-light); margin-top: 8px;">Категории с меньшим номером отображаются первыми</p>
+                               </div>
+                           </div>
+                       </div>
+                       <div style="text-align: right; margin-top: 24px;">
+                           <button type="submit" class="btn btn-primary">${isNew ? 'Создать категорию' : 'Сохранить изменения'}</button>
+                       </div>
+                   </form>
+                   `;
+                },
+                productForm(product = {}) {
+                   const isNew = !product.id;
+                   return `
+                   <form id="product-form" data-id="${product.id || ''}">
+                       <div class="form-grid">
+                           <div class="form-column">
+                                <div class="form-section">
+                                    <h4>Контент и URL (EN)</h4> 
+                                    <div class="form-group"><label for="name">Название *</label><input type="text" class="form-control" name="name" value="${product.name || ''}" required></div>
+                                    <div class="form-group"><label for="slug_en">URL Slug *</label><input type="text" class="form-control" name="slug_en" value="${product.slugs?.en || ''}" required><div class="slug-preview">URL: /en<strong id="slug-preview-en-path"></strong>/<strong>${product.slugs?.en || ''}</strong></div></div>
+                                    <div class="form-group"><label for="description">Описание</label><textarea class="form-control" name="description" rows="4">${product.description || ''}</textarea></div>
+                                </div>
+                                <div class="form-section">
+                                    <h4>Контент и URL (RU)</h4>
+                                    <div class="form-group"><label for="name_ru">Название</label><input type="text" class="form-control" name="name_ru" value="${product.name_ru || ''}"></div>
+                                    <div class="form-group"><label for="slug_ru">URL Slug</label><input type="text" class="form-control" name="slug_ru" value="${product.slugs?.ru || ''}"><div class="slug-preview">URL: /ru<strong id="slug-preview-ru-path"></strong>/<strong>${product.slugs?.ru || ''}</strong></div></div>
+                                    <div class="form-group"><label for="description_ru">Описание</label><textarea class="form-control" name="description_ru" rows="4">${product.description_ru || ''}</textarea></div>
+                                </div>
+                                <div class="form-section">
+                                    <h4>Контент и URL (KA)</h4>
+                                    <div class="form-group"><label for="name_ka">Название</label><input type="text" class="form-control" name="name_ka" value="${product.name_ka || ''}"></div>
+                                    <div class="form-group"><label for="slug_ka">URL Slug</label><input type="text" class="form-control" name="slug_ka" value="${product.slugs?.ka || ''}"><div class="slug-preview">URL: /ka<strong id="slug-preview-ka-path"></strong>/<strong>${product.slugs?.ka || ''}</strong></div></div>
+                                    <div class="form-group"><label for="description_ka">Описание</label><textarea class="form-control" name="description_ka" rows="4">${product.description_ka || ''}</textarea></div>
+                                </div>
+                           </div>
+                           <div class="form-column">
+                               <div class="form-section">
+                                    <h4>Основная информация</h4>
+                                    <div class="form-group"><label>Цена (₾)*</label><input type="number" class="form-control" name="price" value="${product.price || ''}" step="0.01" required></div>
+                                    <div class="form-group"><label>Старая цена (₾)</label><input type="number" class="form-control" name="originalPrice" value="${product.originalPrice || ''}" step="0.01"></div>
+                                    <div class="form-group"><label>Кол-во на складе*</label><input type="number" class="form-control" name="stock" value="${product.stock || 0}" required></div>
+                                    <div class="form-group">
+                                        <label>Категория*</label>
+                                        <select class="form-control" name="categoryId" required>
+                                            ${AdminApp.store.categories.map(c => `<option value="${c.id}" ${product.categoryId == c.id ? 'selected' : ''}>${c.name_ru || c.name}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <div class="form-group"><label><input type="checkbox" name="isBestseller" ${product.isBestseller ? 'checked' : ''}> Бестселлер</label></div>
+                                    <div class="form-group"><label><input type="checkbox" name="archived" ${product.archived ? 'checked' : ''}> Архивирован</label></div>
+                               </div>
+                               <div class="form-section">
+                                    <h4>Изображения</h4>
+                                    <div class="form-group"><label>URL (каждый с новой строки)</label><textarea class="form-control" name="images" rows="5">${product.images?.join('\n') || ''}</textarea></div>
+                               </div>
+                           </div>
+                       </div>
+                       <div style="text-align: right; margin-top: 24px;">
+                           <button type="submit" class="btn btn-primary">${isNew ? 'Создать товар' : 'Сохранить изменения'}</button>
+                       </div>
+                   </form>
+                   `;
+                }
+            },
+
+            router: {
+                init() { window.addEventListener('hashchange', () => this.handleRouteChange()); this.handleRouteChange(); },
+                navigate(hash) { window.location.hash = hash; },
+                async handleRouteChange() {
+                    const hash = window.location.hash.replace('#', '') || 'dashboard';
+                    const [page, action, id] = hash.split('/');
+                    const pageTitleEl = document.getElementById('page-title');
+                    const addNewBtn = document.getElementById('add-new-btn');
+                    addNewBtn.style.display = 'none';
+
+                    switch (page) {
+                        case 'products':
+                            pageTitleEl.textContent = 'Товары';
+                            addNewBtn.style.display = 'inline-flex'; addNewBtn.innerHTML = '<i class="fas fa-plus"></i> Добавить товар';
+                            if(action === 'new' || action === 'edit') {
+                                const product = action === 'edit' ? AdminApp.store.products.find(p => p.id === id) : {};
+                                pageTitleEl.textContent = action === 'edit' ? 'Редактировать товар' : 'Новый товар';
+                                AdminApp.render(AdminApp.templates.productForm(product));
+                                AdminApp.handleProductForm();
+                            } else { AdminApp.render(AdminApp.templates.productsPage()); }
+                            break;
+                        case 'categories':
+                            pageTitleEl.textContent = 'Категории';
+                            addNewBtn.style.display = 'inline-flex'; 
+                            addNewBtn.innerHTML = '<i class="fas fa-plus"></i> Добавить категорию';
+                            if(action === 'new' || action === 'edit') {
+                                const category = action === 'edit' ? AdminApp.store.categories.find(c => c.id === id) : {};
+                                pageTitleEl.textContent = action === 'edit' ? 'Редактировать категорию' : 'Новая категория';
+                                AdminApp.render(AdminApp.templates.categoryForm(category));
+                                AdminApp.handleCategoryForm();
+                            } else { 
+                                AdminApp.render(AdminApp.templates.categoriesPage()); 
+                            }
+                            break;
+                        default:
+                            pageTitleEl.textContent = 'Дашборд';
+                            AdminApp.render(AdminApp.templates.dashboard());
+                            break;
+                    }
+                }
+            },
+            
+            generateSlug(text) {
+                return text
+                    .toLowerCase()
+                    .replace(/[^a-z0-9\s-]/g, '')
+                    .trim()
+                    .replace(/\s+/g, '-')
+                    .replace(/-+/g, '-');
+            },
+
+            handleCategoryForm() {
+                const form = document.getElementById('category-form');
+                
+                const nameInput = form.querySelector('[name="name"]');
+                const slugInput = form.querySelector('[name="slug_en"]');
+                nameInput?.addEventListener('input', (e) => {
+                    if (!slugInput.value) {
+                        slugInput.value = this.generateSlug(e.target.value);
+                    }
+                });
+                
+                form.addEventListener('submit', async e => {
+                    e.preventDefault();
+                    const id = form.dataset.id;
+                    const formData = new FormData(form);
+                    
+                    const categoryData = {
+                        name: formData.get('name'),
+                        name_ru: formData.get('name_ru'),
+                        name_ka: formData.get('name_ka'),
+                        slugs: {
+                            en: formData.get('slug_en'),
+                            ru: formData.get('slug_ru'),
+                            ka: formData.get('slug_ka')
+                        },
+                        parentId: formData.get('parentId') || null,
+                        image: formData.get('image'),
+                        order: parseInt(formData.get('order')) || 1,
+                        archived: formData.get('archived') === 'on',
+                        isDeleted: false
+                    };
+                    
+                    try {
+                        const docRef = id ? db.collection('categories').doc(id) : db.collection('categories').doc();
+                        await docRef.set(categoryData, { merge: true });
+                        this.showToast('Категория успешно сохранена');
+                        await this.fetchData();
+                        this.router.navigate('#categories');
+                    } catch (error) { 
+                        this.showToast('Ошибка сохранения: ' + error.message, 'error'); 
+                    }
+                });
+            },
+            handleProductForm() {
+                const form = document.getElementById('product-form');
+                
+                const nameInput = form.querySelector('[name="name"]');
+                const slugInputEn = form.querySelector('[name="slug_en"]');
+                const slugInputRu = form.querySelector('[name="slug_ru"]');
+                const slugInputKa = form.querySelector('[name="slug_ka"]');
+                const categorySelect = form.querySelector('[name="categoryId"]');
+                
+                nameInput?.addEventListener('input', (e) => {
+                    if (!slugInputEn.value) {
+                        const newSlug = this.generateSlug(e.target.value);
+                        slugInputEn.value = newSlug;
+                        form.querySelector('#slug-preview-en-path + strong').textContent = newSlug;
+                    }
+                });
+
+                function updateSlugPreviews() {
+                    const categoryId = categorySelect.value;
+                    const category = AdminApp.store.categories.find(c => c.id === categoryId);
+                    if (!category) return;
+                    
+                    const buildPath = (lang) => {
+                        let path = '';
+                        const catSlug = category.slugs?.[lang] || category.slugs?.en || category.id;
+                        if (category.parentId) {
+                            const parent = AdminApp.store.categories.find(c => c.id === category.parentId);
+                            if (parent) {
+                                path = `/${parent.slugs?.[lang] || parent.slugs?.en || parent.id}/${catSlug}`;
+                            } else {
+                                path = `/${catSlug}`;
+                            }
+                        } else {
+                            path = `/${catSlug}`;
+                        }
+                        return path;
+                    }
+                    
+                    document.getElementById('slug-preview-en-path').textContent = buildPath('en');
+                    document.getElementById('slug-preview-ru-path').textContent = buildPath('ru');
+                    document.getElementById('slug-preview-ka-path').textContent = buildPath('ka');
+                    form.querySelector('#slug-preview-en-path + strong').textContent = slugInputEn.value;
+                    form.querySelector('#slug-preview-ru-path + strong').textContent = slugInputRu.value;
+                    form.querySelector('#slug-preview-ka-path + strong').textContent = slugInputKa.value;
+                }
+
+                categorySelect.addEventListener('change', updateSlugPreviews);
+                [slugInputEn, slugInputRu, slugInputKa].forEach(input => {
+                    input?.addEventListener('input', updateSlugPreviews);
+                });
+                updateSlugPreviews();
+
+                form.addEventListener('submit', async e => {
+                    e.preventDefault();
+                    const id = form.dataset.id;
+                    const formData = new FormData(form);
+                    const productData = {
+                      name: formData.get('name'),
+                      name_ru: formData.get('name_ru'),
+                      name_ka: formData.get('name_ka'),
+                      description: formData.get('description'),
+                      description_ru: formData.get('description_ru'),
+                      description_ka: formData.get('description_ka'),
+                      slugs: {
+                          en: formData.get('slug_en'),
+                          ru: formData.get('slug_ru'),
+                          ka: formData.get('slug_ka')
+                      },
+                      price: parseFloat(formData.get('price')),
+                      originalPrice: parseFloat(formData.get('originalPrice')) || null,
+                      stock: parseInt(formData.get('stock')),
+                      categoryId: formData.get('categoryId'),
+                      isBestseller: formData.get('isBestseller') === 'on',
+                      archived: formData.get('archived') === 'on',
+                      images: formData.get('images').split('\n').map(url => url.trim()).filter(Boolean)
+                    };
+                    
+                    try {
+                        const docRef = id ? db.collection('products').doc(id) : db.collection('products').doc();
+                        await docRef.set(productData, { merge: true });
+                        this.showToast('Товар успешно сохранен');
+                        await this.fetchData();
+                        this.router.navigate('#products');
+                    } catch (error) { this.showToast('Ошибка сохранения: ' + error.message, 'error'); }
+                })
+            },
+            
+            showToast(message, type = 'success') {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i><span>${message}</span>`;
+                container.appendChild(toast);
+                setTimeout(() => toast.classList.add('show'), 10);
+                setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 4000);
+            },
+            
+            showConfirmation(message, confirmText = 'Удалить') {
+                return new Promise(resolve => {
+                    const modal = document.getElementById('confirmation-modal');
+                    modal.querySelector('#modal-message').textContent = message;
+                    modal.querySelector('#modal-confirm').textContent = confirmText;
+                    modal.classList.add('active');
+                    const cancelBtn = modal.querySelector('#modal-cancel');
+                    const confirmBtn = modal.querySelector('#modal-confirm');
+                    const cleanup = (result) => { modal.classList.remove('active'); cancelBtn.removeEventListener('click', onCancel); confirmBtn.removeEventListener('click', onConfirm); resolve(result); }
+                    const onCancel = () => cleanup(false);
+                    const onConfirm = () => cleanup(true);
+                    cancelBtn.addEventListener('click', onCancel, { once: true });
+                    confirmBtn.addEventListener('click', onConfirm, { once: true });
+                });
+            },
+            
+            // [NEW] - Function to seed the database with default categories
+            async seedDatabase() {
+                const defaultCategories = [
+                    {
+                        name_ru: 'Гостиная', name: 'Living Room', name_ka: 'მისაღები',
+                        slugs: { ru: 'gostinaya', en: 'living-room', ka: 'misagebi' },
+                        image: 'https://images.unsplash.com/photo-1618220179428-22790b461013?auto=format&fit=crop&q=80&w=800',
+                        children: [
+                            { name_ru: 'Диваны и кресла', name: 'Sofas & Armchairs', name_ka: 'დივნები და სავარძლები', slugs: { ru: 'divany-i-kresla', en: 'sofas-armchairs', ka: 'divnebi-da-savardzlebi' }, image: 'https://images.unsplash.com/photo-1540574163024-5884424af235?auto=format&fit=crop&q=80&w=800' },
+                            { name_ru: 'Журнальные столики', name: 'Coffee Tables', name_ka: 'ყავის მაგიდები', slugs: { ru: 'zhurnalnye-stoliki', en: 'coffee-tables', ka: 'yavis-magidebi' }, image: 'https://images.unsplash.com/photo-1616401784845-180882ba9ba8?auto=format&fit=crop&q=80&w=800' }
+                        ]
+                    },
+                    {
+                        name_ru: 'Кухня и столовая', name: 'Kitchen & Dining', name_ka: 'სამზარეულო',
+                        slugs: { ru: 'kuhnya-i-stolovaya', en: 'kitchen-dining', ka: 'samzareulo' },
+                        image: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&q=80&w=800',
+                        children: [
+                            { name_ru: 'Посуда', name: 'Tableware', name_ka: 'ჭურჭელი', slugs: { ru: 'posuda', en: 'tableware', ka: 'churcheli' }, image: 'https://images.unsplash.com/photo-1554537156-3c750b3a0153?auto=format&fit=crop&q=80&w=800' },
+                            { name_ru: 'Кухонный текстиль', name: 'Kitchen Textiles', name_ka: 'სამზარეულოს ტექსტილი', slugs: { ru: 'kuhonniy-tekstil', en: 'kitchen-textiles', ka: 'samzareulos-teqstili' }, image: 'https://images.unsplash.com/photo-1619401763721-a4e95313a521?auto=format&fit=crop&q=80&w=800' }
+                        ]
+                    },
+                    {
+                        name_ru: 'Декор', name: 'Decor', name_ka: 'დეკორი',
+                        slugs: { ru: 'dekor', en: 'decor', ka: 'dekori' },
+                        image: 'https://images.unsplash.com/photo-1541119599589-7f4510b65263?auto=format&fit=crop&q=80&w=800',
+                        children: [
+                            { name_ru: 'Вазы', name: 'Vases', name_ka: 'ვაზები', slugs: { ru: 'vazy', en: 'vases', ka: 'vazebi' }, image: 'https://images.unsplash.com/photo-1578913683093-9c8a7199992f?auto=format&fit=crop&q=80&w=800' },
+                            { name_ru: 'Свечи и подсвечники', name: 'Candles & Holders', name_ka: 'სანთლები', slugs: { ru: 'svechi', en: 'candles', ka: 'santlebi' }, image: 'https://images.unsplash.com/photo-1612429433436-1e389196144c?auto=format&fit=crop&q=80&w=800' },
+                            { name_ru: 'Постеры и картины', name: 'Art & Posters', name_ka: 'პოსტერები', slugs: { ru: 'postery', en: 'posters', ka: 'posterebi' }, image: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?auto=format&fit=crop&q=80&w=800' }
+                        ]
+                    }
+                ];
+
+                console.log('Seeding started...');
+                const categoriesCollection = db.collection('categories');
+
+                const snapshot = await categoriesCollection.limit(1).get();
+                if (!snapshot.empty) {
+                    console.log('Categories collection is not empty. Seeding aborted.');
+                    this.showToast('База категорий уже заполнена', 'error');
+                    return;
+                }
+
+                for (const [index, cat] of defaultCategories.entries()) {
+                    const parentData = {
+                        name: cat.name, name_ru: cat.name_ru, name_ka: cat.name_ka,
+                        slugs: cat.slugs, image: cat.image, parentId: null,
+                        archived: false, order: index + 1,
+                    };
+                    
+                    const parentRef = await categoriesCollection.add(parentData);
+                    console.log(`Added parent: ${parentData.name}`);
+
+                    if (cat.children && cat.children.length > 0) {
+                        for (const [childIndex, subCat] of cat.children.entries()) {
+                            const childData = {
+                                name: subCat.name, name_ru: subCat.name_ru, name_ka: subCat.name_ka,
+                                slugs: subCat.slugs, image: subCat.image, parentId: parentRef.id,
+                                archived: false, order: childIndex + 1,
+                            };
+                            await categoriesCollection.add(childData);
+                            console.log(`  - Added child: ${childData.name}`);
+                        }
+                    }
+                }
+                console.log('Seeding finished!');
+                this.showToast('Категории по умолчанию успешно добавлены!');
+                await this.fetchData();
+                this.router.handleRouteChange();
+            }
+        };
+
+        AdminApp.bindAuthEventListeners();
+        AdminApp.handleAuthState();
+
+    });
+    </script>
+</body>
+</html>
