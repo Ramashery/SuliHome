@@ -1,27 +1,28 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <title>Page Not Found - Redirecting...</title>
-  <script type="text/javascript">
-    // Этот скрипт предназначен для Single Page Applications (SPA) на GitHub Pages.
-    // Когда GitHub Pages возвращает 404, этот файл загружается.
-    // Мы сохраняем исходный URL (который вызвал 404) в sessionStorage,
-    // а затем перенаправляем пользователя на базовый URL вашего SPA (index.html).
-    // Ваше SPA в index.html затем прочитает sessionStorage и восстановит URL.
-    
-    // Сохраняем полный путь (pathname + query string)
-    sessionStorage.setItem('gh-pages-spa-redirect', window.location.pathname + window.location.search);
-    
-    // Перенаправляем на базовый путь вашего приложения.
-    // У вас в <base href> указан "/SuliHome/", поэтому перенаправляем туда.
-    // Если бы ваш сайт был на корне домена (например, username.github.io),
-    // вы бы перенаправляли на '/'.
-    window.location.replace('/SuliHome/'); 
-  </script>
-</head>
-<body>
-  <h1>Page Not Found - Redirecting...</h1>
-  <p>If you are not redirected automatically, please <a href="/SuliHome/">click here</a>.</p>
-</body>
+  <head>
+    <meta charset="utf-8">
+    <title>Suli Home - Page Not Found</title>
+    <script type="text/javascript">
+      // Получаем путь, на который пытался зайти пользователь
+      var path = window.location.pathname;
+
+      // Получаем имя вашего репозитория из <base href="..."> в index.html
+      // В вашем случае это /SuliHome/
+      var repoName = '/SuliHome/'; 
+
+      // Удаляем имя репозитория из пути, если оно там есть
+      if (path.startsWith(repoName)) {
+        path = path.slice(repoName.length);
+      }
+      
+      // Сохраняем "правильный" путь в sessionStorage
+      sessionStorage.setItem('gh-pages-spa-redirect', path);
+      
+      // Перенаправляем пользователя на главную страницу
+      window.location.replace(repoName);
+    </script>
+  </head>
+  <body>
+  </body>
 </html>
